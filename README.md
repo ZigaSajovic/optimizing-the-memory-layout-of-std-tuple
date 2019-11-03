@@ -58,9 +58,9 @@ Lets say you are aligning the first element `T`, and it needs padding to be natu
 
 ## Formulating the solution
 
-Given what we know, we could formulate a solution in two parts. First we optimize the permutation of elements, and memorize it (as a type list, with no runtime trace). We than store a *std::tuple* in the permuted order, and provide a level of (static) indirection when interfacing with the tuple. This is done by having both the **permutation** and its **inverse**. Than, we use the **permutation** to create the layout of the stored tuple, and use the **inverse permutation** to internally map indexes with which the user interfaces with the tuple.
+Given what we know, we could formulate a solution in two parts. First we optimize the permutation of elements, and memorize it (as a type list, with no runtime trace). We than create a wrapper class *Tuple* that stores an *std::tuple* in the permuted order, and provides a level of (static) indirection when interfacing with it. This is done by having both the **permutation** and its **inverse**. Than, we use the **permutation** to create the layout of the stored tuple, and use the **inverse permutation** to internally map indexes with which the user interfaces with the tuple.
 
-We will first describe the metaprogram that computes the permutations, and than code the interface indirection.
+We will first describe the metaprogram that computes the permutations, and than code the interface indirecting wrapper.
 
 ### Metaprogram
 
@@ -255,7 +255,7 @@ template <int I>
 using Index = ml::Invoke<ml::UnList<ml::Get<I>>, InversePermutation>;
 ```
 
-### Interface indirection
+### The Tuple wrapper class
 
 With the **permutation** and its **inverse** computed, and the permuted elements extracted, we turn to coding the class interface indirection. The class **Tuple** will contain:
 
