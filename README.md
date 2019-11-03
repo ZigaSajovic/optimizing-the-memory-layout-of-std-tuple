@@ -1,7 +1,7 @@
 # Optimizing the memory footprint of std::tuple
 
 In the last few years I have been increasingly interested in bringing higher order concepts of category theory closer to the bits that implement their instances. Furthermore, I wanted them to have control over how the instances are mapped onto hardware. As a coproduct of such meta-endeavours I created **CppML**, a [metalanguage for C++](https://github.com/ZigaSajovic/CppML), which I use when developing libraries.
-Today, we will use it to optimize the memory footprint of the *std::tuple*, at no runtime or cognitive cost on the end of the user.
+Today, we will use it to optimize the memory footprint of *std::tuple*, at no runtime or cognitive cost on the end of the user.
 
 Before we begin, have a look at the result.
 
@@ -31,7 +31,7 @@ c == c
 ---
 We notice that the *std::tuple* has **20 Bytes** of **wasted** space (making it **twice** as big as the actual data), while *Tuple* only has **4 Bytes** of **wasted** space.
 
-The entire solution spans roughly `50` lines of code, and can be seen [here](https://github.com/ZigaSajovic/optimizing-the-memory-footprint-of-std-tuple/blob/master/Tuple.hpp) in its entirety. Please note that it does not contain all the functionalities required of *std::tuple**, but it does contain all the non-trivial implementations (hence others are trivially added, in terms of existing ones).
+The entire solution spans roughly `70` lines of code, which we will build up step by step in this *README*. Please note that it does not contain all the functionalities required of *std::tuple*, but it does contain all the non-trivial implementations (hence others are trivially added, in terms of existing ones). The entire code can be found [here](https://github.com/ZigaSajovic/optimizing-the-memory-footprint-of-std-tuple/blob/master/Tuple.hpp).
 
 Note that while this text is not intended as a tutorial on [**CppML**](https://github.com/ZigaSajovic/CppML), we will include explanations and illustrative examples along the way. Please take a look at its [README](https://github.com/ZigaSajovic/CppML), which contains further explanations.
 
@@ -220,7 +220,7 @@ static_assert( std::is_same_v<
 
 #### Computing the inverse permutation
 
-The last thing to do, is to compute the inverse permutation. This is needed so that we can find the element the user is requesting (remember the **as if** rule, and the user being oblivious to the permutation).
+The last thing to do, is to compute the inverse permutation. 
 
 The inverse is computed as follows:
   * for each `N`:
