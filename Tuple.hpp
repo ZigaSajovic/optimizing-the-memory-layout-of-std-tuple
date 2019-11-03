@@ -1,6 +1,5 @@
 #include "CppML/CppML.hpp"
 #include <tuple>
-template <typename> struct Print;
 using Predicate =
     ml::Apply<ml::UnList<ml::Get<1, ml::AligmentOf<>>>, ml::Greater<>>;
 
