@@ -291,7 +291,7 @@ template <typename... Ts> class Tuple {
 
   _Tuple _tuple;                       // permuted tuple std::tuple<...>
   template <int... Is, typename... Us> // delegate constructor
-  Tuple(ml::ListT<ml::Int<Is>...>, std::tuple<Us &&...> &&fwd)
+  Tuple(ml::ListT<ml::Int<Is>...>, std::tuple<Us...> &&fwd)
       : _tuple{static_cast<Us &&>(std::get<Is>(fwd))...} {}
 
 public:
