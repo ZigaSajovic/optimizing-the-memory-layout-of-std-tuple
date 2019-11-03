@@ -1,7 +1,7 @@
-# Optimizing the memory footprint of std::tuple
+# Optimizing the memory layout of std::tuple
 
 In the last few years I have become increasingly interested in bringing higher order concepts of category theory closer to the bits that implement their instances. This leads one to languages like *C++*, where the types have insight into the hardware, which gives the constructs control over how they are mapped onto it. On the way towards of such meta-endeavours I created **CppML**, a [metalanguage for C++](https://github.com/ZigaSajovic/CppML), which I use when developing libraries.
-In this text, we will use it to optimize the memory footprint of *std::tuple*, at no runtime or cognitive cost on the end of the user.
+In this text, we will use it to optimize the memory layout of *std::tuple*, at no runtime or cognitive cost on the end of the user.
 
 Before we begin, have a look at the result.
 
@@ -37,7 +37,7 @@ We notice that the *std::tuple* has **20 Bytes** of **wasted** space (making it 
 | Tuple      | 24           | 0.84           |  
 | std::tuple | 40           | 0.5            |  
 
-The solution spans roughly `70` lines of code, which we will build up step by step in this *README*. Please note that it does not contain all the functionalities required of *std::tuple*, but it does provide all the non-trivial implementations (hence others are trivially implementable in terms (or in light) of those provided). The entire code can be found [here](https://github.com/ZigaSajovic/optimizing-the-memory-footprint-of-std-tuple/blob/master/Tuple.hpp).
+The solution spans roughly `70` lines of code, which we will build up step by step in this *README*. Please note that it does not contain all the functionalities required of *std::tuple*, but it does provide all the non-trivial implementations (hence others are trivially implementable in terms (or in light) of those provided). The entire code can be found [here](https://github.com/ZigaSajovic/optimizing-the-memory-layout-of-std-tuple/blob/master/Tuple.hpp).
 
 Note that while this text is not intended as a tutorial on [**CppML**](https://github.com/ZigaSajovic/CppML), we will include explanations and illustrative examples along the way. Please take a look at its [README](https://github.com/ZigaSajovic/CppML), which contains further explanations.
 
