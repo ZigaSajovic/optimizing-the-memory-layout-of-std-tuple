@@ -31,7 +31,7 @@ c == c
 ---
 We notice that the *std::tuple* has **20 Bytes** of **wasted** space (making it **twice** as big as the actual data), while *Tuple* only has **4 Bytes** of **wasted** space.
 
-The entire solution spans roughly `50` lines of code, and can be seen [here]() in its entirety.
+The entire solution spans roughly `50` lines of code, and can be seen [here](https://github.com/ZigaSajovic/optimizing-the-memory-footprint-of-std-tuple/blob/master/Tuple.hpp) in its entirety. Please note that it does not contain all the functionalities required of *std::tuple**, but it does contain all the non-trivial implementations (hence others are trivially added, in terms of existing ones).
 
 Note that while this text is not intended as a tutorial on [**CppML**](https://github.com/ZigaSajovic/CppML), we will include explanations and illustrative examples along the way. Please take a look at its [README](https://github.com/ZigaSajovic/CppML), which contains further explanations.
 
