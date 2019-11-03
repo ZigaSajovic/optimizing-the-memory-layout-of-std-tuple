@@ -31,11 +31,11 @@ c == c
 ---
 We notice that the *std::tuple* has **20 Bytes** of **wasted** space (making it **twice** as big as the actual data), while *Tuple* only has **4 Bytes** of **wasted** space.
 
-| **class**  | **size [B]** | **efficiency** |
-|:----------:|:------------:|:--------------:|
-| Data       | 20           | 1              |
-| Tuple      | 24           | 0.84           |
-| std::tuple | 40           | 0.5            |
+| **class**  | **size [B]** | **efficiency** |  
+|:----------:|:------------:|:--------------:|  
+| Data       | 20           | 1              |  
+| Tuple      | 24           | 0.84           |  
+| std::tuple | 40           | 0.5            |  
 
 The solution spans roughly `70` lines of code, which we will build up step by step in this *README*. Please note that it does not contain all the functionalities required of *std::tuple*, but it does contain all the non-trivial implementations (hence others are trivially implementable in terms (or in light) of existing ones). The entire code can be found [here](https://github.com/ZigaSajovic/optimizing-the-memory-footprint-of-std-tuple/blob/master/Tuple.hpp).
 
