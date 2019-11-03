@@ -24,9 +24,9 @@ Before we begin, have a look at the result.
   assert(tup == std_tup);
 ```
 ---
-> Size of Tuple:  24 Bytes
-Size of std::tuple: 40 Bytes
-Actual size of data: 20 Bytes
+> Size of Tuple:  24 Bytes  
+Size of std::tuple: 40 Bytes  
+Actual size of data: 20 Bytes  
 c == c
 ---
 We notice that the *std::tuple* has **20 Bytes** of **wasted** space (making it **twice** as big as the actual data), while *Tuple* only has **4 Bytes** of **wasted** space.
@@ -46,7 +46,7 @@ std::cout << "Size of t_big: " << sizeof(t_big) <<std::endl;
 std::cout << "Size of t_small: " << sizeof(t_small) <<std::endl;
 ```
 ---
-> Size of t_big: 12
+> Size of t_big: 12  
 Size of t_small: 8
 ---
 
