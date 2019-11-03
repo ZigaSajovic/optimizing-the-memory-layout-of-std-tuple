@@ -1,7 +1,7 @@
 # Optimizing the memory footprint of std::tuple
 
-In the last few years I have been increasingly interested in bringing higher order concepts of category theory closer to the bits that implement their instances. Furthermore, I wanted them to have control over how the instances are mapped onto hardware. As a coproduct of such meta-endeavours I created **CppML**, a [metalanguage for C++](https://github.com/ZigaSajovic/CppML), which I use when developing libraries.
-Today, we will use it to optimize the memory footprint of *std::tuple*, at no runtime or cognitive cost on the end of the user.
+In the last few years I have become increasingly interested in bringing higher order concepts of category theory closer to the bits that implement their instances. This leads one to languages like *C++*, where the types have awareness of the hardware and how they are mapped onto it. As a co-product of such meta-endeavours I created **CppML**, a [metalanguage for C++](https://github.com/ZigaSajovic/CppML), which I use when developing libraries.
+In this text, we will use it to optimize the memory footprint of *std::tuple*, at no runtime or cognitive cost on the end of the user.
 
 Before we begin, have a look at the result.
 
@@ -31,7 +31,7 @@ c == c
 ---
 We notice that the *std::tuple* has **20 Bytes** of **wasted** space (making it **twice** as big as the actual data), while *Tuple* only has **4 Bytes** of **wasted** space.
 
-The entire solution spans roughly `70` lines of code, which we will build up step by step in this *README*. Please note that it does not contain all the functionalities required of *std::tuple*, but it does contain all the non-trivial implementations (hence others are trivially added, in terms of existing ones). The entire code can be found [here](https://github.com/ZigaSajovic/optimizing-the-memory-footprint-of-std-tuple/blob/master/Tuple.hpp).
+The solution spans roughly `70` lines of code, which we will build up step by step in this *README*. Please note that it does not contain all the functionalities required of *std::tuple*, but it does contain all the non-trivial implementations (hence others are trivially implementable in terms (or in light) of existing ones). The entire code can be found [here](https://github.com/ZigaSajovic/optimizing-the-memory-footprint-of-std-tuple/blob/master/Tuple.hpp).
 
 Note that while this text is not intended as a tutorial on [**CppML**](https://github.com/ZigaSajovic/CppML), we will include explanations and illustrative examples along the way. Please take a look at its [README](https://github.com/ZigaSajovic/CppML), which contains further explanations.
 
@@ -131,7 +131,7 @@ We need to write a predicate metafunction appropriate for out list of tagged typ
 ##### Constructing the predicate metafunction
 
 The predicate is a metafunction mapping a pair of types to `ml::Bool<trueth_val>`. The elements of the list are of the form `Tag<ml::Int<I0>, T0>`, and we wish to compare on
-**Aligment**s of `T`s. Therefore our predicate is to be a metafunction of that maps
+**Aligment**s of `T`s. Therefore our predicate is to be a metafunction that maps
 ```c++
 (Tag<ml::Int<I0>, T0>, Tag<ml::Int<I1>, T1>)
 ->
