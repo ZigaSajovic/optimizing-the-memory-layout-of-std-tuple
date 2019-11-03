@@ -1,6 +1,6 @@
 # Optimizing the memory footprint of std::tuple
 
-In the last few years I have become increasingly interested in bringing higher order concepts of category theory closer to the bits that implement their instances. This leads one to languages like *C++*, where the types have awareness of the hardware and how they are mapped onto it. As a co-product of such meta-endeavours I created **CppML**, a [metalanguage for C++](https://github.com/ZigaSajovic/CppML), which I use when developing libraries.
+In the last few years I have become increasingly interested in bringing higher order concepts of category theory closer to the bits that implement their instances. This leads one to languages like *C++*, where the types have insight into the hardware, which gives the constructs control over how they are mapped onto it. On the way towards of such meta-endeavours I created **CppML**, a [metalanguage for C++](https://github.com/ZigaSajovic/CppML), which I use when developing libraries.
 In this text, we will use it to optimize the memory footprint of *std::tuple*, at no runtime or cognitive cost on the end of the user.
 
 Before we begin, have a look at the result.
