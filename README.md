@@ -12,7 +12,7 @@ Before we begin, have a look at the result.
   std::cout << "Size of out Tuple: " << sizeof(tup) << " Bytes" << std::endl;
 
   std::tuple<char, int, char, int, char, double, char> std_tup{'a', 1,   'c', 3,
-                                                               'd', 4.0, 'e'};
+                                                               'd', 5.0, 'e'};
   std::cout << "Size of out std::tuple: " << sizeof(std_tup) << " Bytes"
             << std::endl;
 
