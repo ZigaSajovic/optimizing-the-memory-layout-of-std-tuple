@@ -1,5 +1,6 @@
 #include "CppML/CppML.hpp"
 #include <tuple>
+template <typename> struct Print;
 using Predicate =
     ml::Apply<ml::UnList<ml::Get<1, ml::AligmentOf<>>>, ml::Greater<>>;
 
@@ -31,7 +32,8 @@ template <typename... Ts> class Tuple {
   _Tuple _tuple;
   template <int... Is, typename... Us>
   Tuple(ml::ListT<ml::Int<Is>...>, std::tuple<Us...> &&fwd)
-      : _tuple{static_cast<Us &&>(std::get<Is>(fwd))...} {}
+      : _tuple{static_cast<ml::Invoke<ml::Get<Is>, Us...> &&>(
+            std::get<Is>(fwd))...} {}
 
 public:
   template <typename... Us>

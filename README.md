@@ -24,9 +24,9 @@ Before we begin, have a look at the result.
   assert(tup == std_tup);
 ```
 ---
-> Size of Tuple:  24 Bytes  
-Size of std::tuple: 40 Bytes  
-Actual size of data: 20 Bytes  
+> Size of Tuple:  24 Bytes
+Size of std::tuple: 40 Bytes
+Actual size of data: 20 Bytes
 c == c
 ---
 We notice that the *std::tuple* has **20 Bytes** of **wasted** space (making it **twice** as big as the actual data), while *Tuple* only has **4 Bytes** of **wasted** space.
@@ -46,7 +46,7 @@ std::cout << "Size of t_big: " << sizeof(t_big) <<std::endl;
 std::cout << "Size of t_small: " << sizeof(t_small) <<std::endl;
 ```
 ---
-> Size of t_big: 12  
+> Size of t_big: 12
 Size of t_small: 8
 ---
 
@@ -220,7 +220,7 @@ static_assert( std::is_same_v<
 
 #### Computing the inverse permutation
 
-The last thing to do, is to compute the inverse permutation. 
+The last thing to do, is to compute the inverse permutation.
 
 The inverse is computed as follows:
   * for each `N`:
@@ -268,6 +268,8 @@ With the **permutation** and its **inverse** computed, and the permuted elements
 * working constructor:
   * using the passed permutation list it will:
     * unpack the elements from the forwarded tuple in the permuted order
+    * it will also perform a static cast to the correct (permuted)
+      reference type (akin to `std::forward`)
 * a friend `Get<N>(Tuple)` function:
   * it will have access to the  **inverse permutation**,
   * and will remap the index before forwarding to `std::get`
@@ -292,7 +294,8 @@ template <typename... Ts> class Tuple {
   _Tuple _tuple;                       // permuted tuple std::tuple<...>
   template <int... Is, typename... Us> // delegate constructor
   Tuple(ml::ListT<ml::Int<Is>...>, std::tuple<Us...> &&fwd)
-      : _tuple{static_cast<Us &&>(std::get<Is>(fwd))...} {}
+      : _tuple{static_cast<ml::Invoke<ml::Get<Is>, Us...> &&>(
+            std::get<Is>(fwd))...} {}
 
 public:
   template <typename... Us> // working constructor
