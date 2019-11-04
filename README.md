@@ -298,13 +298,13 @@ template <typename... Ts> class Tuple {
   using Index = ml::Invoke<ml::UnList<ml::Get<I>>, InversePermutation>;
 
   _Tuple _tuple;                       // permuted tuple std::tuple<...>
-  template <int... Is, typename... Us> // delegate constructor
+  template <int... Is, typename... Us> // working constructor
   Tuple(ml::ListT<ml::Int<Is>...>, std::tuple<Us...> &&fwd)
       : _tuple{static_cast<ml::Invoke<ml::Get<Is>, Us...> &&>(
             std::get<Is>(fwd))...} {}
 
 public:
-  template <typename... Us> // working constructor
+  template <typename... Us> // delegate constructor
   Tuple(Us &&... us)
       : Tuple{Permutation{}, std::forward_as_tuple(static_cast<Us &&>(us)...)} {
   }
