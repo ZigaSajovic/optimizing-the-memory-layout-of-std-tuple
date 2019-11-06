@@ -1,7 +1,7 @@
 #include "CppML/CppML.hpp"
 #include <tuple>
 using Predicate =
-    ml::Apply<ml::UnList<ml::Get<1, ml::AligmentOf<>>>, ml::Greater<>>;
+    ml::Map<ml::UnList<ml::Get<1, ml::AligmentOf<>>>, ml::Greater<>>;
 
 template <typename Id, typename T> struct Tag {};
 template <typename... Ts>
@@ -12,7 +12,7 @@ using TaggedPermutation =
 
 template <int N, typename List, typename Pipe = ml::ToList>
 using Extract =
-    ml::Invoke<ml::UnList<ml::Apply<ml::UnList<ml::Get<N>>, Pipe>>, List>;
+    ml::Invoke<ml::UnList<ml::Map<ml::UnList<ml::Get<N>>, Pipe>>, List>;
 
 template <typename... Ts> class Tuple {
   using _TaggedPermutation = TaggedPermutation<Ts...>;
@@ -23,7 +23,7 @@ template <typename... Ts> class Tuple {
       ml::Invoke<ml::UnList<ml::FindIf<ml::Partial<ml::IsSame<>, T>>>,
                  Permutation>;
   using InversePermutation =
-      typename ml::TypeRange<ml::Apply<ml::WrapIn1<Finder>>>::template f<
+      typename ml::TypeRange<ml::Map<ml::WrapIn1<Finder>>>::template f<
           0, ml::Length<Permutation>::value>;
   template <int I>
   using Index = ml::Invoke<ml::UnList<ml::Get<I>>, InversePermutation>;

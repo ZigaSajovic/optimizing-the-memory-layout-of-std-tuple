@@ -147,13 +147,13 @@ The predicate is a metafunction mapping a pair of types to `ml::Bool<trueth_val>
 ->
 ml::Bool<truth_val>
 ```
-We will achieve this by *taking a pack of two types* and  **Apply**ing a metafunction that **UnList**s the `Tag`, *pipes* the result to **Get<1>**, to extract the second element (being `Ti`), and pipe the result to **AligmentOf**. We will than *pipe* the result of **Apply** to **Greater**.
+We will achieve this by *taking a pack of two types* and  **Map**ing them by a metafunction that **UnList**s the `Tag`, *pipes* the result to **Get<1>**, to extract the second element (being `Ti`), and pipe the result to **AligmentOf**. We will than *pipe* the result of **Map** to **Greater**.
 ```c++
-using Predicate = ml::Apply<        // Apply to each of the two types:
+using Predicate = ml::Map<          // Map each of the two types:
     ml::UnList<                     // Unwrap the Tag
         ml::Get<1,                  // Extract the second element
                 ml::AligmentOf<>>>, // Take its alignment
-    ml::Greater<>>;                 // And Pipe the result of Apply to
+    ml::Greater<>>;                 // And Pipe the result of Map to
                                     // Greater
 ```
 For example
@@ -176,7 +176,7 @@ using TaggedPermutation =
     ml::Invoke<ml::ZipWith<Tag, // Zip the input lists with Tag and pipe into
                            ml::Sort<Predicate>>, // than compare the generated
                                                  // elements (pipe-ing from the
-                                                 // Apply) using Greater
+                                                 // Map) using Greater
                typename ml::TypeRange<>::template f<
                    0, sizeof...(Ts)>, // generate a range from
                                       // [0, numOfTypes)
@@ -196,14 +196,14 @@ static_assert(
 
 #### Extracting the permutation and the permuted tuple, from the tagged permutation
 
-Examining the `TaggedPerm` above, it is essentially a list of Tags, `Tag<ml::Const<int, I>, T>`, with `I` being the original positionof `T`. We now need to split this list into two lists, where the first will only hold the integer constants, and the other only the types. We accomplish this by **Apply**ing the **Get<N>** to each `Tag`. Note that we will need to **UnList** the `Tag`, as **Apply** operates on parameter packs.
+Examining the `TaggedPerm` above, it is essentially a list of Tags, `Tag<ml::Const<int, I>, T>`, with `I` being the original positionof `T`. We now need to split this list into two lists, where the first will only hold the integer constants, and the other only the types. We accomplish this by **Map**ing each `Tag` with the **Get<N>**. Note that we will need to **UnList** the `Tag`, as **Map** operates on parameter packs.
 
 ```c++
 template <int N, typename List, typename Pipe = ml::ToList>
 using Extract = ml::Invoke<         // Invoke the following metafunction
     ml::UnList<                     // UnList the List into a parameter pack
                                     // and Pipe into
-        ml::Apply<                  // Applying
+        ml::Map<                    // Mapping
             ml::UnList<ml::Get<N>>, // Get N-th element
             Pipe>>,
     List>;
@@ -253,7 +253,7 @@ using Finder =
 To compute the **InversePermutation**, all we need to do is to apply the **Finder** to a sequence `[ml::Int<0>, ..., ml::Int<N>]`. We do this by again constructing the **TypeRange** and pipe it into **ml::WrapIn1<Finder>**.
 ```c++
 using InversePermutation = typename ml::TypeRange<
-      ml::Apply<ml::WrapIn1<Finder>>>::template f<0, ml::Length<Permutation>>;
+      ml::Map<ml::WrapIn1<Finder>>>::template f<0, ml::Length<Permutation>>;
 ```
 A specific index is than inverted, by looking up the element at its index, in the **Inverse Permutation**.
 ```c++
@@ -292,7 +292,7 @@ template <typename... Ts> class Tuple {
       ml::Invoke<ml::UnList<ml::FindIf<ml::Partial<ml::IsSame<>, T>>>,
                  Permutation>;
   using InversePermutation =
-      typename ml::TypeRange<ml::Apply<ml::WrapIn1<Finder>>>::template f<
+      typename ml::TypeRange<ml::Map<ml::WrapIn1<Finder>>>::template f<
           0, ml::Length<Permutation>::value>;
   template <int I>
   using Index = ml::Invoke<ml::UnList<ml::Get<I>>, InversePermutation>;
