@@ -18,11 +18,5 @@ int main() {
             << std::endl;
 
   std::cout << get<2>(tup) << " == " << std::get<2>(std_tup) << std::endl;
-
-  std::tuple<char, int, char> t0;
-  std::tuple<int> t1;
-  std::cout << "Size of t0: " << sizeof(t0) << std::endl;
-  std::cout << "Size of t1: " << sizeof(t1) << std::endl;
-
   assert(tup == std_tup);
 }
