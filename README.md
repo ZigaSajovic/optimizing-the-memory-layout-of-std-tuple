@@ -1,7 +1,7 @@
 # Optimizing the memory layout of std::tuple
 
 In the last few years I have become increasingly interested in bringing higher order concepts of category theory closer to the bits that implement their instances. This leads one to languages like *C++*, where the types have insight into the hardware, which gives the constructs control over how they are mapped onto it. On the way towards of such meta-endeavours I created **CppML**, a [metalanguage for C++](https://github.com/ZigaSajovic/CppML), which I use when developing libraries.
-In this text, we will use it to optimize the memory layout of *std::tuple*, at no runtime or cognitive cost on the end of the user.
+In this text, we will use it to optimize the memory layout of `std::tuple`, at no runtime or cognitive cost on the end of the user.
 
 Before we begin, have a look at the result.
 
@@ -37,9 +37,9 @@ We notice that the *std::tuple* has **20 Bytes** of **wasted** space (making it 
 | Tuple      | 24           | 0.84           |  
 | std::tuple | 40           | 0.5            |  
 
-The solution spans roughly `70` lines of code, which we will build up step by step in this *README*. Please note that it does not contain all the functionalities required of *std::tuple*, but it does provide all the non-trivial implementations (hence others are trivially implementable in terms (or in light) of those provided). The entire code can be found [here](https://github.com/ZigaSajovic/optimizing-the-memory-layout-of-std-tuple/blob/master/Tuple.hpp).
+The solution spans roughly `70` lines of code, which we will build up step by step in this *README*. Please note that it does not contain all the functionalities required of `std::tuple`, but it does provide all the non-trivial implementations (hence others are trivially implementable in terms (or in light) of those provided). The entire code can be found [here](https://github.com/ZigaSajovic/optimizing-the-memory-layout-of-std-tuple/blob/master/Tuple.hpp).
 
-Note that while this text is not intended as a tutorial on [**CppML**](https://github.com/ZigaSajovic/CppML), we will include explanations and illustrative examples along the way. Please take a look at its [README](https://github.com/ZigaSajovic/CppML), which contains further explanations.
+Please note that this text is not intended to be a tutorial on [CppML](https://github.com/ZigaSajovic/CppML), for that please see the in-depth [`CppML Tutorial`](https://github.com/ZigaSajovic/CppML/blob/master/docs/tutorial/index.md). Regardless, we will still include explanations and illustrative examples of the steps we take here. Note that all the links with the `ml::` prefix (like [`ml::ZipWith`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/ZipWith.md)) lead to the metafunctions entry in the [`CppML Reference`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/index.md), which you are encouraged to follow.
 
 ## Where is the slack in std::tuple
 
@@ -64,70 +64,128 @@ Lets say you are aligning the first element `T`, and it needs padding to be natu
 
 ## Formulating the solution
 
-Given what we know, we could formulate a solution in two parts. First we optimize the permutation of elements, and memorize it (as a type list, with no runtime trace). We than create a wrapper class *Tuple* that stores an *std::tuple* in the permuted order, and provides a level of (static) indirection when interfacing with it. This is done by having both the **permutation** and its **inverse**. Than, we use the **permutation** to create the layout of the stored tuple, and use the **inverse permutation** to internally map indexes with which the user interfaces with the tuple.
+We implement a class `Tuple`, which is an interface wrapper around `std::tuple`. It works by approximating the optimal permutation by the `Permutation` that sorts the types by their `alignment`. It than lays the objects out in memory in that order. It holds the `Permutation` as its template argument, and uses it to internally redirect the users indexing (hence the user can be oblivious to the permutation).
 
-We will first write the [metaprogram that computes the permutations](#metaprogram), and than code the [interface indirecting wrapper](#the-tuple-wrapper-class).
+We want a `TupleBase` wrapper of a `std::tuple`, which will
 
-### Metaprogram
+```c++
+template <typename Permutation, typename StdTuple> struct TupleBase;
+template<int ...Is, typename ...Ts>
+struct TupleBase<
+            ml::ListT<ml::Int<Is>...>,
+            std::tuple<Ts...>> {
+/* Implementation */
+};
+```
 
-To get the permutation and its inverse, we take the list of types, enumerate (tag) them (so we can track their position), and sort them by their alignment. We than extract the enumerates from the sequence as our permutation, and compute its inverse.
-Below we specify the **metaprogram** in steps, and provide an example execution on the above example of `std::tuple<char, int, char>`.
+have the `Permuatation` that sorts the types by their `alignment` as its first template parameter, and the already permuted `std::tuple` as its second. Hence, we need a `MakeBase` metafunction, which will allow us to implement `Tuple` class like
 
-* Enumerate the list of types
-  * Start with two lists:
-    * `List1`: list of types:
-      * e.g. `ml::ListT<char, int, char>`
-    * `List2`: integer sequence of same length
-      * e.g. `ml::ListT<ml::Int<0>, ml::Int<1>, ml::Int<2>>`
-  * and a `Tag` template with `2` arguments:
-    * e.g. `Tag<T, U>`
-  * Zip lists `List1` and `List2` with `Tag`:
-    * e.g. `ml::ListT<Tag<ml::Int<0>, char>, Tag<ml::Int<1>, char>, Tag<ml::Int<1>, char>>`
-* Sort the enumerated list, using the alignment of the second component as key
-  * e.g. `ml::ListT<Tag<ml::Int<1>, int>, Tag<ml::Int<0>, char>, Tag<ml::Int<2>, char>>`
-* Extract the types, and the permutation:
-  * Permutation:
-    * `ml::List<ml::Int<1>, ml::Int<2>, ml::Int<0>>`
-  * Types:
-    * `ml::ListT<int, char, char>`
-* Compute the inverse permutation:
-  * Inverse Permutation:
-    * `ml::ListT<ml::Int<2>, ml::Int<0>, ml::Int<1>>`
+```c++
+template <typename... Ts> struct Tuple : MakeBase<Ts...> {
+  using MakeBase<Ts...>::MakeBase;
+};
+```
+
+On a concrete example, we want `MakeBase`
+
+```c++
+using TB0 = MakeBase<char, int, char, int, char, double, char>;
+using TB1 = 
+    TupleBase<ml::ListT<ml::Int<5>, ml::Int<3>, ml::Int<1>, ml::Int<6>, ml::Int<4>,
+                        ml::Int<2>, ml::Int<0>>,
+              std::tuple<double, int, int, char, char, char, char>>;
+static_assert(
+      std::is_same_v<TB0, TB1>);
+```
+
+
+
+We will first write the [metaprogram that computes the permutations](#makebase-metaprogram), and than code the [interface indirecting wrapper](#the-tuple-wrapper-class).
+
+### `MakeBase` Metaprogram
+
+To get the permutation and its inverse, we take the list of types, enumerate (zip with a tag) them (so we can track their position), and sort them by their alignment. We than extract the enumerates from the sequence as our permutation and extract the sorted types into a `std::tuple`.
+
+Below we specify the **metaprogram** in a bullet-list, which we will than translate step by step into `CppML`.
+
+
+* Zip with `Tag` (using [`ml::ZipWith`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/ZipWith.md))
+  * the list of type-integers in the range `[0, sizeof...(Ts))`, (which is created using [`ml::Range`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Pack/Range.md))
+    * [`ml::ListT`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Vocabulary/List.md)`<`[`ml::Int`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Vocabulary/Value.md)`<0>, ..., `[`ml::Int`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Vocabulary/Value.md)`<sizeof...(Ts) - 1>>`, and
+  * the list made from `Ts...`
+    * [`ml::ListT`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Vocabulary/List.md)`<Ts...>`
+* [`ml::Sort`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/Sort.md) the resulting parameter pack `Tag<ml::Int<Is>, Ts>...`, with the `Comparator` that takes the `alignment`of the `T`.
+  * `Comparator: P0, P1 -> Bool<t>`
+  * We [`ml::Map`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/Map.md) (the `P0` and `P1`) by:
+    * [`ml::Unwrap`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/Unwrap.md) the parameter pack from `Tag<Int<I>, T>` (see [`Unwrapping template arguments into metafunctions`](https://github.com/ZigaSajovic/CppML/blob/master/docs/tutorial/index.md#unwrapping-template-arguments-into-metafunctions)), and
+    * extract the second element (`T`) using [`ml::Get`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Pack/Get.md), and
+    * pipe the extracted `T` into [`ml::AlignOf`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/TypeTraits/AlignOf.md)
+  * and pipe the alignments into [`ml::Greater`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Arithmetic/Greater.md)
+* We than split the sorted parameter pack `Tag<ml::Int<Is>, Ts>...` into `TupleBase<ml::ListT<ml::Int<Is>...>, std::tuple<Ts...>>` by:
+  * create a [`ml::ProductMap`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/ProductMap.md) of:
+    * [`ml::Map`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/Map.md) of extractors of the `ml::Int<i>`:
+      * [`ml::Unwrap`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/Unwrap.md) the parameter pack from `Tag<Int<I>, T>` (see [`Unwrapping template arguments into metafunctions`](https://github.com/ZigaSajovic/CppML/blob/master/docs/tutorial/index.md#unwrapping-template-arguments-into-metafunctions)), and
+      * extract the first element (`ml::Int<I>`) using [`ml::Get`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Pack/Get.md), and
+      * pipe into [`ml::ToList`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/ToList.md)
+    * [`ml::Map`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/Map.md) of extractors of the `T`:
+      * [`ml::Unwrap`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/Unwrap.md) the parameter pack from `Tag<Int<I>, T>` (see [`Unwrapping template arguments into metafunctions`](https://github.com/ZigaSajovic/CppML/blob/master/docs/tutorial/index.md#unwrapping-template-arguments-into-metafunctions)), and
+      * extract the second element (`T`) using [`ml::Get`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Pack/Get.md), and
+      * pipe into the metafunction created from `std::tuple` (using [`ml::F`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/F.md); see [`Lifting templates to metafunctions`](https://github.com/ZigaSajovic/CppML/blob/master/docs/tutorial/index.md#lifting-templates-to-metafunctions)),
+    * and `Pipe`into the metafunction created from `TupleBase` (using [`ml::F`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/F.md); see [`Lifting templates to metafunctions`](https://github.com/ZigaSajovic/CppML/blob/master/docs/tutorial/index.md#lifting-templates-to-metafunctions))
+
+This sequence is easily translated into `CppML`:
+
+```c++
+template <typename ...Ts>
+using MakeBase = ml::f<
+    ml::ZipWith<
+        Param,
+        ml::Sort<ml::Map<ml::Unwrap<ml::Get<1, ml::AlignOf<>>>, ml::Greater<>>,
+                 ml::Product<ml::Map<ml::Unwrap<ml::Get<0>>>,
+                             ml::Map<ml::Unwrap<ml::Get<1>>, ml::F<std::tuple>>,
+                             ml::F<TupleBase>>>>,
+    ml::Range<>::f<0, sizeof...(Ts)>, ml::ListT<Ts...>>;
+```
+
+We will spend the rest of this post building the `MakeBase` metafunction step by step.
+
+We will also need a metafunction that will compute the inverse permutation for an index `I`, which will allow us to internally redirect users indexing. This is done by locating the index of `I` in the permutation (using [`ml::FindIf`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/FindIf.md).
 
 #### Enumerating the list of types
 
 Our goal is two-fold. We wish to generate a permutation of elements, which will optimize the object size, while ensuring the **as if** rule. This means that the user is to be oblivious to the permutation behind the scene, and can access elements in the same order he/she originally specified. To this purpose, we will enumerate the types (i.e. **Zip** them with appropriate index) before permuting them.
 
-[**CppML**](https://github.com/ZigaSajovic/CppML) provides the **ZipWith** metafunction, which takes `N` lists of types, and Zips them using the provided template. It also provides  **TypeRange**, which generates a list of integer constants `ml::ListT<ml::Int<0>, ..., ml::Int<N>>`.
+[**CppML**](https://github.com/ZigaSajovic/CppML) provides the [`ml::ZipWith`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/ZipWith.md) metafunction, which takes `N` lists of types, and Zips them using the provided template. It also provides  [`ml::Range`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Pack/Range.md), which generates a list of integer constants `ml::ListT<ml::Int<0>, ..., ml::Int<N>>`.
 
 ```c++
 template <typename Id, typename T> struct Tag {};
 template <typename... Ts>
 using TaggedList =
-    ml::Invoke<ml::ZipWith<Tag // Type with which to Zip
-                           //, ml::ToList<> // is the implicit Pipe
-                           >,
-               typename ml::TypeRange<>::template f<
-                   0, sizeof...(Ts)>, // Integer sequence from [0, |Ts...|)
-               ml::ListT<Ts...>>
+ml::f<ml::ZipWith<Tag // Type with which to Zip
+                      // ml::ToList<> // is the implicit Pipe
+                  >,
+      typename ml::TypeRange<>::template f<
+          0, sizeof...(Ts)>, // Integer sequence from [0, |Ts...|)
+      ml::ListT<Ts...>>
 ```
 
 For example
+
 ```c++
 using Tagged = ml::ListT<Tag<ml::Int<0>, int>, Tag<ml::Int<1>, double>>;
 static_assert(std::is_same_v<TaggedList<int, double>, Tagged>);
 
 ```
 
-**Note** the implicit **Pipe** (`ml::ToList<>`) in the above code section. **Pipe** is a key concept in [**CppML**](https://github.com/ZigaSajovic/CppML), it is how metafunction execution can be chained (think bash pipes). In the above code section, the implicit **Pipe** is **ml::ToList<>**,which returns the result in a list. We will be replacing it with **Sort** later (i.e. we will pipe the result of **Zip** into **Sort**).
+**Note** the implicit **Pipe** ([`ml::ToList`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/ToList.md)) in the above code section. **Pipe** is a key concept in [**CppML**](https://github.com/ZigaSajovic/CppML), it is how metafunction execution can be chained (think bash pipes). In the above code section, the implicit **Pipe** is ([`ml::ToList`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/ToList.md)), which returns the result in a list. We will be replacing it with [`ml::Sort`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/Sort.md) later (i.e. we will pipe the result of [`ml::ZipWith`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/ZipWith.md) into [`ml::Sort`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/Sort.md)).
 
 #### Sorting the enumerated type list by the second element
 
-As specified, we will use **Sort** as a greedy solution to the packing problem. **Sort<Predicate>** provided by [**CppML**](https://github.com/ZigaSajovic/CppML) operates on a parameter pack:
+As specified, we will use [`ml::Sort`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/Sort.md) as a greedy solution to the packing problem. [`ml::Sort`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/Sort.md)`<Comparator>` provided by [**CppML**](https://github.com/ZigaSajovic/CppML) operates on a parameter pack:
 
 ```c++
-using SortedIs = ml::Invoke<ml::Sort<ml::Greater<>>, // Predicate
-                            ml::Int<0>, ml::Int<2>, ml::Int<1>>;
+using SortedIs = ml::f<ml::Sort<ml::Greater<>>, // Predicate
+                       ml::Int<0>, ml::Int<2>, ml::Int<1>>;
 using Sorted = ml::ListT<ml::Int<2>, ml::Int<1>, ml::Int<0>>;
 static_assert(std::is_same_v<SortedIs, Sorted>);
 ```
@@ -136,33 +194,39 @@ We need to write a predicate metafunction appropriate for out list of tagged typ
 
 ##### Constructing the predicate metafunction
 
-The predicate is a metafunction mapping a pair of types to `ml::Bool<trueth_val>`. The elements of the list are of the form `Tag<ml::Int<I0>, T0>`, and we wish to compare on
-**Aligment**s of `T`s. Therefore our predicate is to be a metafunction that maps
+The predicate is a metafunction mapping a pair of types to `ml::Bool<truth_val>`. The elements of the list are of the form `Tag<ml::Int<I0>, T0>`, and we wish to compare on
+**Alignment**s of `T`s. Therefore our predicate is to be a metafunction that maps
+
 ```c++
 (Tag<ml::Int<I0>, T0>, Tag<ml::Int<I1>, T1>)
 ->
 (T0, T1)
-->
-(ml::Int<aligment_of_T0>, ml::Int<aligment_of_T1>)
+>->
+(ml::Int<alignment_of_T0>, ml::Int<alignment_of_T1>)
 ->
 ml::Bool<truth_val>
 ```
-We will achieve this by *taking a pack of two types* and  **Map**ing them by a metafunction that **UnList**s the `Tag`, *pipes* the result to **Get<1>**, to extract the second element (being `Ti`), and pipe the result to **AligmentOf**. We will than *pipe* the result of **Map** to **Greater**.
+
+We will achieve this by *taking a pack of two types* and  ([`ml::Map`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/Map.md))ing them by a metafunction that ([`ml::Unwrap`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/Unwrap.md))s the `Tag`, `pipes` the result to [`ml::Get`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Pack/Get.md)`<1>`, to extract the second element (being `Ti`), and pipe the result to [`ml::AlignOf`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/TypeTraits/AlignOf.md). We will than `pipe` the result of ([`ml::Map`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/Map.md)) to [`ml::Greater`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Arithmetic/Greater.md).
+
 ```c++
-using Predicate = ml::Map<          // Map each of the two types:
-    ml::UnList<                     // Unwrap the Tag
-        ml::Get<1,                  // Extract the second element
-                ml::AligmentOf<>>>, // Take its alignment
-    ml::Greater<>>;                 // And Pipe the result of Map to
-                                    // Greater
+using Predicate = ml::Map<       // Map each of the two types:
+    ml::Unwrap<                  // Unwrap the Tag
+        ml::Get<1,               // Extract the second element
+                ml::AlignOf<>>>, // Take its alignment
+    ml::Greater<>>;              // And Pipe the result of Map to
+                                 // Greater
 ```
+
 For example
+
 ```c++
 static_assert(
   std::is_same_v<
-    ml::Invoke<Predicate, Tag<ml::Int<2>, double>, Tag<ml::Int<5>, float>>,
+    ml::f<Predicate, Tag<ml::Int<2>, double>, Tag<ml::Int<5>, float>>,
     ml::Bool<true>>)
 ```
+
 because alignment of `double` is greater than that of `float` (on my machine).
 
 #### Computing the tagged permutation
@@ -173,161 +237,192 @@ We can now put it all together.
 template <typename Id, typename T> struct Tag{};
 template <typename... Ts>
 using TaggedPermutation =
-    ml::Invoke<ml::ZipWith<Tag, // Zip the input lists with Tag and pipe into
-                           ml::Sort<Predicate>>, // than compare the generated
-                                                 // elements (pipe-ing from the
-                                                 // Map) using Greater
-               typename ml::TypeRange<>::template f<
-                   0, sizeof...(Ts)>, // generate a range from
-                                      // [0, numOfTypes)
-               ml::ListT<Ts...>>;
+    ml::f<ml::ZipWith<Tag, // Zip the input lists with Tag and pipe into
+                      ml::Sort<Predicate>>, // than compare the generated
+                                            // elements (pipe-ing from the
+                                            // Map) using Greater
+          ml::Range<>::f<0, sizeof...(Ts)>, // generate a
+                                                                  // range from
+                                                                  // [0,
+                                                                  // numOfTypes)
+          ml::ListT<Ts...>>;
 ```
+
 On a concrete example, this metafunction evaluates to
+
 ```c++
 using TaggedPerm = TaggedPermutation<char, int, char, int, char, double, char>;
 using List =
-    ml::ListT<Tag<ml::Const<int, 5>, double>, Tag<ml::Const<int, 3>, int>,
-              Tag<ml::Const<int, 1>, int>, Tag<ml::Const<int, 6>, char>,
-              Tag<ml::Const<int, 4>, char>, Tag<ml::Const<int, 2>, char>,
-              Tag<ml::Const<int, 0>, char>>
+    ml::ListT<Tag<ml::Int<5>, double>, Tag<ml::Int<3>, int>,
+              Tag<ml::Int<1>, int>, Tag<ml::Int<6>, char>,
+              Tag<ml::Int<4>, char>, Tag<ml::Int<2>, char>,
+              Tag<ml::Int<0>, char>>
 static_assert(
               std::is_same_v<TaggedPerm, List>);
 ```
 
-#### Extracting the permutation and the permuted tuple, from the tagged permutation
+#### Extracting the permutation and the permuted tuple into a `TupleBase`
 
-Examining the `TaggedPerm` above, it is essentially a list of Tags, `Tag<ml::Const<int, I>, T>`, with `I` being the original positionof `T`. We now need to split this list into two lists, where the first will only hold the integer constants, and the other only the types. We accomplish this by **Map**ing each `Tag` with the **Get<N>**. Note that we will need to **UnList** the `Tag`, as **Map** operates on parameter packs.
+Examining the `TaggedPerm` above, it is essentially a list of Tags, `Tag<ml::Const<int, I>, T>`, with `I` being the original position of `T`. We now need to split this list into two lists, where the first will only hold the integer constants, and the other only the types. We accomplish this by ([`ml::Map`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/Map.md))ing each `Tag` with the [`ml::Get`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Pack/Get.md). Note that we will need to ([`ml::Unwrap`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/Unwrap.md)) the `Tag`, as ([`ml::Map`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/Map.md)) operates on parameter packs.
 
 ```c++
-template <int N, typename List, typename Pipe = ml::ToList>
-using Extract = ml::Invoke<         // Invoke the following metafunction
-    ml::UnList<                     // UnList the List into a parameter pack
-                                    // and Pipe into
-        ml::Map<                    // Mapping
-            ml::UnList<ml::Get<N>>, // Get N-th element
-            Pipe>>,
-    List>;
+using Extract0 =
+    ml::Map<                     // Mapping
+        ml::Unwrap<ml::Get<0>>> // Get N-th element
 ```
-This metafunction can now be used on the computed **TaggedPerm**. **Note** that we can pass the **Pipe** into it. We will do so for *pipeing*  extracted *types* into **ml::F\<std::tuple\>**.
+
+and for the types
+
+```c++
+using Extract1 =
+    ml::Map<                     // Mapping
+        ml::Unwrap<ml::Get<1>,
+        ml::F<std::tuple>>> // Get N-th element
+```
+
+This metafunctions can now be used on the computed `TaggedPerm`. **Note** that in the `Extract1` we are using a lifted template `std::tuple` as the `Pipe` of ([`ml::Map`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/Map.md)).
+
 ```c++
 using Permutation =
-    ml::ListT<ml::Const<int, 5>, ml::Const<int, 3>, ml::Const<int, 1>,
-              ml::Const<int, 6>, ml::Const<int, 4>, ml::Const<int, 2>,
-              ml::Const<int, 0>>
+    ml::ListT<ml::Int<5>, ml::Int<3>, ml::Int<1>,
+              ml::Int<6>, ml::Int<4>, ml::Int<2>,
+              ml::Int<0>>
+using Perm =
+  ml::f<ml::Unwrap<TaggedPerm>, Extract0>;
 static_assert( std::is_same_v<
                 Permutation,
-                Extract<0, TaggedPerm>>);
+                Perm>);
 using PermutedTuple =
     std::tuple<double, int, int, char, char, char, char>
+using Tupl =
+  ml::f<ml::Unwrap<TaggedPerm>, Extract1>;
 static_assert( std::is_same_v<
-                Types,
-                Extract<1, TaggedPerm, ml::F<std::tuple>>>);
+                PermutedTuple,
+                Tupl>);
 ```
 
-#### Computing the inverse permutation
-
-The last thing to do, is to compute the inverse permutation.
-
-The inverse is computed as follows:
-  * for each `N`:
-    * find the index `I` at which `N` appears in the permutation
-    * set `N`-th element to `I`
-
-First we write the metafunction that takes a type `T` and returns the index at which it appears in the `Permutation`. [**CppML**](https://github.com/ZigaSajovic/CppML) provides the **FindIf<Predicate>** metafunction. We need to write a PredicateFactory, which will take `T`, and return a Predicate. We do this by **partially evaluating** the **IsSame** metafunction on `T`.
-```c++
-template <typename T>
-using PredicateFactory = ml::Partial<ml::IsSame<>, T>;
-```
-PredicateFactory returns a metafunction mapping a single type to `ml::Bool<truth_val>`.
+To run both `Extract0` and `Extract1` on the `TaggedPermutation` we will use([`ml::ProductMap`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Functional/ProductMap.md)), which takes `N` metafunctions and executes all of them on the input parameter pack `Ts...`. As mentioned, we will `Pipe` the results of `Extract0` to `ml::F<TupleBase>`.
 
 ```c++
-template <typename T>
-using Finder =
-      ml::Invoke<
-          ml::UnList<
-                ml::FindIf< // Get the index of the element satisfying
-                            PredicateFactory<T>>>, // the predicate
-          Permutation>;
+using ExtractBoth =
+        ml::ProductMap<
+                       Extract0,
+                       Extract1,
+                       ml::F<TupleBase>>; // Pipe results of both into here
 ```
 
-To compute the **InversePermutation**, all we need to do is to apply the **Finder** to a sequence `[ml::Int<0>, ..., ml::Int<N>]`. We do this by again constructing the **TypeRange** and pipe it into **ml::WrapIn1<Finder>**.
+We see that it correctly computes the `TupleBase` instance:
+
 ```c++
-using InversePermutation = typename ml::TypeRange<
-      ml::Map<ml::WrapIn1<Finder>>>::template f<0, ml::Length<Permutation>>;
+using TupleBase_ =
+  ml::f<ml::Unwrap<TaggedPerm>, ExtractBoth>;
+
+using TB1 = 
+  TupleBase<ml::ListT<ml::Int<5>, ml::Int<3>, ml::Int<1>, ml::Int<6>, ml::Int<4>,
+                      ml::Int<2>, ml::Int<0>>,
+            std::tuple<double, int, int, char, char, char, char>>;
+
+static_assert(
+        std::is_same_v<
+              TB1, TupleBase_>);
 ```
-A specific index is than inverted, by looking up the element at its index, in the **Inverse Permutation**.
+
+which matches our wishes from the [`formulated solution`](#formulating-the-solution).
+
+#### MakeBase metafunction
+
+Putting it all together, the `MakeBase` metafunction looks like so:
+
 ```c++
-template <int I>
-using Index = ml::Invoke<ml::UnList<ml::Get<I>>, InversePermutation>;
+template <typename ...Ts>
+using MakeBase = ml::f<
+    ml::ZipWith<
+        Param,
+        ml::Sort<ml::Map<ml::Unwrap<ml::Get<1, ml::AlignOf<>>>, ml::Greater<>>,
+                 ml::Product<ml::Map<ml::Unwrap<ml::Get<0>>>,
+                             ml::Map<ml::Unwrap<ml::Get<1>>, ml::F<std::tuple>>,
+                             ml::F<TupleBase>>>>,
+    ml::Range<>::f<0, sizeof...(Ts)>, ml::ListT<Ts...>>;
+```
+
+#### Computing the inverse permutation of an index `I`
+
+The last thing to do, is to compute the inverse permutation. Each index `I` is inverted by finding position in the permutation.
+
+[**CppML**](https://github.com/ZigaSajovic/CppML) provides the metafunction [`ml::FindIf`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/FindIf.md)`<Predicate>`, which returns the index of the first element that satisfies the predicate. Hence, we only need to form the predicate. We do so, by **partially evaluating** the [`ml::IsSame`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/TypeTraits/IsSame.md) metafunction. For example,
+
+```c++
+using Is1 = ml::Partial<ml::IsSame<>, ml::Int<1>>;
+using T = ml::f<Is1, ml::Int<2>>;
+static_assert(
+        std::is_same_v<T, ml::Bool<false>>);
+```
+
+This means  that we can invert the index `I` by
+
+```c++
+template <typename I>
+using Invert = ml::f<
+                ml::Unwrap<Permutation>,
+                ml::FindIf<
+                      ml::Partial<ml::IsSame<>>, I>>;
 ```
 
 ### The Tuple wrapper class
 
 With the **permutation** and its **inverse** computed, and the permuted elements extracted, we turn to coding the class interface indirection. The class **Tuple** will contain:
 
-* member tuple:
-  * an `std::tuple` with the permuted elements
-  * this is the `_Tuple tuple` member
-* delegate constructor:
-  * it will forward the passed elements as a tuple, and
-  * along with an instance of the **permutation** integer sequence
-* working constructor:
-  * using the passed permutation list it will:
-    * unpack the elements from the forwarded tuple in the permuted order
-    * it will also perform a static cast to the correct (permuted)
-      reference type (akin to `std::forward`)
-* a friend `Get<N>(Tuple)` function:
-  * it will have access to the  **inverse permutation**,
-  * and will remap the index before forwarding to `std::get`
+* the permuted `std::tuple` member `_tuple`
+  * from its second template argument
+* `Invert` alias which will compute the inverse permutation for an index `I`
+* a delegate constructor:
+  * It will forward the arguments `Us...` as a tuple to the `work construcotr`
+* a `work constructor`:
+  * it will initialize the `_tuple` member by:
+    * permuting the arguments of the forwarding tuple into its initializer
+      * `std::get<Is>(fwd)...` 
+* the `get<I>()` friend function, which:
+  * will use the `f` alias to invert `I` in the `Permutation`
+  * and forward the inverted index to `std::get`
 
 #### Code
 
 ```c++
-template <typename... Ts> class Tuple {
-  using _TaggedPermutation = TaggedPermutation<Ts...>;
-  using Permutation = Extract<0, _TaggedPermutation>;
-  using _Tuple = Extract<1, _TaggedPermutation, ml::F<std::tuple>>;
-  template <typename T>
-  using Finder =
-      ml::Invoke<ml::UnList<ml::FindIf<ml::Partial<ml::IsSame<>, T>>>,
-                 Permutation>;
-  using InversePermutation =
-      typename ml::TypeRange<ml::Map<ml::WrapIn1<Finder>>>::template f<
-          0, ml::Length<Permutation>::value>;
-  template <int I>
-  using Index = ml::Invoke<ml::UnList<ml::Get<I>>, InversePermutation>;
-
-  _Tuple _tuple;                       // permuted tuple std::tuple<...>
-  template <int... Is, typename... Us> // working constructor
-  Tuple(ml::ListT<ml::Int<Is>...>, std::tuple<Us...> &&fwd)
-      : _tuple{static_cast<ml::Invoke<ml::Get<Is>, Us...> &&>(
-            std::get<Is>(fwd))...} {}
+template <int... Is, typename... Ts>
+struct TupleBase<ml::ListT<ml::Int<Is>...>, std::tuple<Ts...>> {
+private:
+  std::tuple<Ts...> _tuple;
+  template <typename... Us>
+  TupleBase(ml::_, std::tuple<Us...> &&fwd) // work constructor
+      : _tuple{
+            static_cast<ml::f<ml::Get<Is>, Us...> &&>(std::get<Is>(fwd))...} {}
 
 public:
-  template <typename... Us> // delegate constructor
-  Tuple(Us &&... us)
-      : Tuple{Permutation{}, std::forward_as_tuple(static_cast<Us &&>(us)...)} {
-  }
-  template <int I, typename... Us> friend decltype(auto) get(Tuple<Us...> &tup);
+  template <typename... Us>
+  TupleBase(Us &&... us) // delegate constructor
+      : TupleBase{ml::_{}, std::forward_as_tuple(static_cast<Us &&>(us)...)} {}
+  template <typename I> // Compute the inverse index
+  using f = ml::f<ml::FindIf<ml::Partial<ml::IsSame<>, I>>, ml::Int<Is>...>;
   template <int I, typename... Us>
-  friend decltype(auto) get(const Tuple<Us...> &tup);
+  friend decltype(auto) get(TupleBase<Us...> &tup);
 };
 
-template <int I, typename... Ts> decltype(auto) get(const Tuple<Ts...> &tup) {
-  // map the index
-  using _I = typename Tuple<Ts...>::template Index<I>;
-  return std::get<_I::value>(tup._tuple);
+template <int I, typename... Us> decltype(auto) get(TupleBase<Us...> &tup) {
+  return std::get<ml::f<TupleBase<Us...>, ml::Int<I>>::value>(tup._tuple);
 }
-template <int I, typename... Ts> decltype(auto) get(Tuple<Ts...> &tup) {
-  // map the index
-  using _I = typename Tuple<Ts...>::template Index<I>;
-  return std::get<_I::value>(tup._tuple);
-}
+```
+
+Which allows us to implement the `Tuple` class, like so:
+
+```c++
+template <typename... Ts> struct Tuple : MakeBase<Ts...> {
+  using MakeBase<Ts...>::MakeBase;
+};
 ```
 
 #### Implementing other functions and methods
 
-As **get<N>** is the driving force behind the interface, in terms of which other functionalities are implemented, their implementation is trivial. Here we demonstrate the implementation of the equality operator.
+As `get<N>` is the driving force behind the interface, in terms of which other functionalities are implemented, their implementation is trivial. Here we demonstrate the implementation of the equality operator.
 
 ```c++
 template <int... Is, template <class...> class T, typename... Ts,
@@ -355,4 +450,4 @@ auto operator==(const Tuple<Us...> &lhs, const std::tuple<Ts...> &rhs) -> bool {
   rhs == lhs;
 };
 ```
-We trust the reader would be able to implement the missing functions and methods, such as other comparison operators, or converting constructors (for *Tuple* and *std::tuple*).
+We trust the reader would be able to implement the missing functions and methods, such as other comparison operators, or converting constructors (for `Tuple` and `std::tuple`).
