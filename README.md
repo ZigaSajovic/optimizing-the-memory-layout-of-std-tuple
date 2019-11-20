@@ -9,11 +9,11 @@ Before we begin, have a look at the result.
 
   Tuple<char, int, char, int, char, double, char> tup{'a', 1,   'c', 3,
                                                       'd', 5.0, 'e'};
-  std::cout << "Size of out Tuple: " << sizeof(tup) << " Bytes" << std::endl;
+  std::cout << "Size of Tuple: " << sizeof(tup) << " Bytes" << std::endl;
 
   std::tuple<char, int, char, int, char, double, char> std_tup{'a', 1,   'c', 3,
                                                                'd', 5.0, 'e'};
-  std::cout << "Size of out std::tuple: " << sizeof(std_tup) << " Bytes"
+  std::cout << "Size of std::tuple: " << sizeof(std_tup) << " Bytes"
             << std::endl;
 
   std::cout << "Actual size of data: "
