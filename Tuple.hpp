@@ -16,7 +16,7 @@ public:
   TupleBase(Us &&... us)
       : TupleBase{ml::_{}, std::forward_as_tuple(static_cast<Us &&>(us)...)} {}
   template <typename I> // Compute the inverse index
-  using f = ml::f<ml::FindIf<ml::Partial<ml::IsSame<>, I>>, ml::Int<Is>...>;
+  using f = ml::f<ml::FindIdIf<ml::Partial<ml::IsSame<>, I>>, ml::Int<Is>...>;
   template <int I, typename... Us>
   friend decltype(auto) get(TupleBase<Us...> &tup);
   template <int I, typename... Us>
