@@ -149,7 +149,7 @@ using MakeBase = ml::f<
 
 We will spend the rest of this post building the `MakeBase` metafunction step by step.
 
-We will also need a metafunction that will compute the inverse permutation for an index `I`, which will allow us to internally redirect users indexing. This is done by locating the index of `I` in the permutation (using [`ml::FindIf`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/FindIf.md).
+We will also need a metafunction that will compute the inverse permutation for an index `I`, which will allow us to internally redirect users indexing. This is done by locating the index of `I` in the permutation (using [`ml::FindIdIf`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/FindIdIf.md).
 
 #### Enumerating the list of types
 
@@ -349,7 +349,7 @@ using MakeBase = ml::f<
 
 The last thing to do, is to compute the inverse permutation. Each index `I` is inverted by finding position in the permutation.
 
-[**CppML**](https://github.com/ZigaSajovic/CppML) provides the metafunction [`ml::FindIf`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/FindIf.md)`<Predicate>`, which returns the index of the first element that satisfies the predicate. Hence, we only need to form the predicate. We do so, by **partially evaluating** the [`ml::IsSame`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/TypeTraits/IsSame.md) metafunction. For example,
+[**CppML**](https://github.com/ZigaSajovic/CppML) provides the metafunction [`ml::FindIdIf`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/Algorithm/FindIdIf.md)`<Predicate>`, which returns the index of the first element that satisfies the predicate. Hence, we only need to form the predicate. We do so, by **partially evaluating** the [`ml::IsSame`](https://github.com/ZigaSajovic/CppML/blob/master/docs/reference/TypeTraits/IsSame.md) metafunction. For example,
 
 ```c++
 using Is1 = ml::Partial<ml::IsSame<>, ml::Int<1>>;
@@ -364,7 +364,7 @@ This means  that we can invert the index `I` by
 template <typename I>
 using Invert = ml::f<
                 ml::Unwrap<Permutation>,
-                ml::FindIf<
+                ml::FindIdIf<
                       ml::Partial<ml::IsSame<>>, I>>;
 ```
 
@@ -402,7 +402,7 @@ public:
   TupleBase(Us &&... us) // delegate constructor
       : TupleBase{ml::_{}, std::forward_as_tuple(static_cast<Us &&>(us)...)} {}
   template <typename I> // Compute the inverse index
-  using f = ml::f<ml::FindIf<ml::Partial<ml::IsSame<>, I>>, ml::Int<Is>...>;
+  using f = ml::f<ml::FindIdIf<ml::Partial<ml::IsSame<>, I>>, ml::Int<Is>...>;
   template <int I, typename... Us>
   friend decltype(auto) get(TupleBase<Us...> &tup);
 };
